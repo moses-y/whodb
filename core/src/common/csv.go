@@ -16,20 +16,33 @@
 
 package common
 
-// EscapeFormula escapes values that could be interpreted as formulas in spreadsheet applications
+// EscapeFormula prefixes a value with a single quote when a spreadsheet would
+// otherwise read it as a formula. CSV writers call it for free-text cells only:
+// numbers, dates and other typed values keep their leading sign.
 func EscapeFormula(value string) string {
 	if len(value) == 0 {
 		return value
 	}
 
-	// Check if the first character is a formula indicator
-	firstChar := value[0]
-	if firstChar == '=' || firstChar == '+' || firstChar == '-' || firstChar == '@' || firstChar == '\t' || firstChar == '\r' {
-		// Prefix with single quote to prevent formula execution
+	switch value[0] {
+	case '=', '+', '-', '@', '\t', '\r':
 		return "'" + value
 	}
-
 	return value
+}
+
+// EscapeFormulaRow returns a CSV row with its free-text cells guarded by
+// EscapeFormula. text marks those cells; a nil text slice marks every cell.
+func EscapeFormulaRow(row []string, text []bool) []string {
+	escaped := make([]string, len(row))
+	for i, value := range row {
+		if text == nil || text[i] {
+			escaped[i] = EscapeFormula(value)
+		} else {
+			escaped[i] = value
+		}
+	}
+	return escaped
 }
 
 // FormatCSVHeader creates a header with the column name.
